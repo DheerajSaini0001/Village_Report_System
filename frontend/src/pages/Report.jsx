@@ -77,8 +77,10 @@ export default function Report() {
             setSubmitting(true);
             const token = localStorage.getItem('token');
 
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:201/api';
+
             // 1️⃣ Signature
-            const sigRes = await fetch('http://localhost:201/api/complaints/upload-signature', {
+            const sigRes = await fetch(`${API_URL}/complaints/upload-signature`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const sig = await sigRes.json();
@@ -100,7 +102,7 @@ export default function Report() {
             if (!uploadRes.ok) throw new Error(uploadData.error?.message);
 
             // 3️⃣ Submit Complaint
-            await fetch('http://localhost:201/api/complaints', {
+            await fetch(`${API_URL}/complaints`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,
