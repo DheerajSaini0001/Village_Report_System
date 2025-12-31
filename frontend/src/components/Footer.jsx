@@ -48,7 +48,7 @@ export default function Footer() {
                                     className={`${isDark
                                         ? "text-gray-400 hover:text-blue-400"
                                         : "text-gray-500 hover:text-blue-600"
-                                    } transition-colors`}
+                                        } transition-colors`}
                                 >
                                     <Icon className="h-5 w-5" />
                                 </a>
@@ -68,16 +68,16 @@ export default function Footer() {
                                 { to: "/report", label: "Report an Issue" },
                                 { to: "/dashboard", label: "Track Complaint" },
                                 { to: "/feed", label: "All Issues" },
-                                { to: "/howitworks", label: "How It Works" }
+                                { to: "/how-it-works", label: "How It Works" }
                             ].map(link => (
                                 <li key={link.to}>
                                     <Link
                                         to={link.to}
                                         className={`flex items-center gap-2 transition-colors
                                         ${isDark
-                                            ? "text-gray-400 hover:text-blue-400"
-                                            : "text-gray-700 hover:text-blue-600"
-                                        }`}
+                                                ? "text-gray-400 hover:text-blue-400"
+                                                : "text-gray-700 hover:text-blue-600"
+                                            }`}
                                     >
                                         <ExternalLink className="h-3 w-3" />
                                         {link.label}
