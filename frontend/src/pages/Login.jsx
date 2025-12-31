@@ -12,20 +12,25 @@ export default function Login() {
     const [otpSent, setOtpSent] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
 
     const handleSendOtp = async (e) => {
         e.preventDefault();
+        setLoading(true);
         try {
             await api.post('/users/login-otp', { email });
             setOtpSent(true);
             toast.success("OTP sent to your email!");
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to send OTP');
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
+        setLoading(true);
         try {
             const { data } = await api.post('/users/verify-otp', { email, otp });
             login(data.token, data);
@@ -33,11 +38,14 @@ export default function Login() {
             navigate(data.role === 'admin' ? '/admin' : '/dashboard');
         } catch (err) {
             toast.error(err.response?.data?.message || 'Invalid OTP');
+        } finally {
+            setLoading(false);
         }
     };
 
     const handlePasswordLogin = async (e) => {
         e.preventDefault();
+        setLoading(true);
         try {
             const { data } = await api.post('/users/login', { email, password });
             login(data.token, data);
@@ -45,6 +53,8 @@ export default function Login() {
             navigate(data.role === 'admin' ? '/admin' : '/dashboard');
         } catch (err) {
             toast.error(err.response?.data?.message || 'Login failed');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -94,8 +104,12 @@ export default function Login() {
                         </div>
 
                         <div>
-                            <button type="submit" className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-                                Sign in
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                            >
+                                {loading ? 'Signing in...' : 'Sign in'}
                             </button>
                         </div>
                     </form>
@@ -122,8 +136,12 @@ export default function Login() {
                         )}
 
                         <div>
-                            <button type="submit" className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-                                {otpSent ? 'Verify OTP & Login' : 'Send OTP'}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                            >
+                                {otpSent ? (loading ? 'Verifying...' : 'Verify OTP & Login') : (loading ? 'Sending OTP...' : 'Send OTP')}
                             </button>
                             {otpSent && (
                                 <button type="button" onClick={() => setOtpSent(false)} className="mt-2 w-full text-center text-sm text-blue-600 hover:text-blue-500">

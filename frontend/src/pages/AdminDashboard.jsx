@@ -32,6 +32,16 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleApprovalToggle = async (id, currentStatus) => {
+        try {
+            await api.put(`/complaints/${id}`, { isApproved: !currentStatus });
+            setComplaints(complaints.map(c => c._id === id ? { ...c, isApproved: !currentStatus } : c));
+            toast.success(currentStatus ? 'Removed from Feed' : 'Added to Feed');
+        } catch (error) {
+            toast.error("Failed to update feed visibility");
+        }
+    };
+
     const openGoogleMaps = (lat, lng) => {
         window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank');
     };
@@ -68,6 +78,7 @@ export default function AdminDashboard() {
                             <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Category</th>
                             <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Reporter</th>
                             <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Feed</th>
                             <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Action</th>
                         </tr>
                     </thead>
@@ -106,14 +117,25 @@ export default function AdminDashboard() {
                                         value={complaint.status}
                                         onChange={(e) => handleStatusChange(complaint._id, e.target.value)}
                                         className={`rounded-full px-2 py-1 text-xs font-semibold leading-5 border-0 cursor-pointer focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${complaint.status === 'Resolved' ? 'bg-green-100 text-green-800' :
-                                                complaint.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                                                    'bg-yellow-100 text-yellow-800'
+                                            complaint.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                                                'bg-yellow-100 text-yellow-800'
                                             }`}
                                     >
                                         <option value="Pending">Pending</option>
                                         <option value="In Progress">In Progress</option>
                                         <option value="Resolved">Resolved</option>
                                     </select>
+                                </td>
+                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                    <button
+                                        onClick={() => handleApprovalToggle(complaint._id, complaint.isApproved)}
+                                        className={`px-3 py-1 rounded-full text-xs font-semibold ${complaint.isApproved
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-gray-100 text-gray-800'
+                                            }`}
+                                    >
+                                        {complaint.isApproved ? 'Shown' : 'Hidden'}
+                                    </button>
                                 </td>
                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                     <form onSubmit={async (e) => {

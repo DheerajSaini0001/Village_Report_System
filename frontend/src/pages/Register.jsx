@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/api';
 import toast from 'react-hot-toast';
+import { Locate, Loader2 } from 'lucide-react';
 
 export default function Register() {
     const [step, setStep] = useState(1); // 1: Email, 2: Details + OTP
@@ -16,35 +17,73 @@ export default function Register() {
     });
     const { login } = useAuth();
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
+    const [gettingLocation, setGettingLocation] = useState(false);
+
+    const handleGetLocation = () => {
+        if (!navigator.geolocation) {
+            toast.error('Geolocation is not supported by your browser');
+            return;
+        }
+
+        setGettingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                const locString = `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`;
+                setFormData(prev => ({ ...prev, address: locString }));
+                toast.success('Location acquired!');
+                setGettingLocation(false);
+            },
+            (error) => {
+                console.error(error);
+                let msg = 'Unable to retrieve location';
+                if (error.code === 1) msg = 'Location permission denied. Please enable in browser settings.';
+                else if (error.code === 2) msg = 'Location unavailable. Ensure GPS is on.';
+                else if (error.code === 3) msg = 'Location request timed out.';
+
+                toast.error(msg);
+                setGettingLocation(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSendOtp = async (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
+        setLoading(true);
         try {
-            await api.post('/users/register-otp', { email });
-            setStep(2);
-            toast.success("Verification OTP sent to email!");
+            // First send all data to be saved + send OTP
+            await api.post('/users/register-otp', formData);
+            setStep(2); // Move to OTP verification step
+            toast.success("Details saved. OTP sent to your email!");
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to send OTP');
+            toast.error(err.response?.data?.message || 'Registration failed');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleVerifyRegisterOtp = async (e) => {
         e.preventDefault();
+        setLoading(true);
         try {
+            // Verify OTP and Create User
             const { data } = await api.post('/users/register-verify', {
-                email,
                 otp,
                 ...formData
             });
             login(data.token, data);
-            toast.success("Registration successful! Welcome email sent.");
+            toast.success("Account verified! Welcome.");
             navigate('/dashboard');
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Registration failed');
+            toast.error(err.response?.data?.message || 'Verification failed');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -58,44 +97,18 @@ export default function Register() {
 
             <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
                 {step === 1 ? (
-                    <form className="space-y-6" onSubmit={handleSendOtp}>
-                        <div>
-                            <label className="block text-sm font-medium leading-6 text-gray-900">Email address</label>
-                            <div className="mt-2">
-                                <input
-                                    name="email"
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <button type="submit" className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
-                                Send Verification OTP
-                            </button>
-                        </div>
-                    </form>
-                ) : (
-                    <form className="space-y-6" onSubmit={handleSubmit}>
-                        <div>
-                            <label className="block text-sm font-medium leading-6 text-gray-900">Email</label>
-                            <div className="mt-2 text-sm text-gray-600">{email} <button type="button" onClick={() => setStep(1)} className="text-blue-600 hover:text-blue-500 text-xs">(Change)</button></div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium leading-6 text-gray-900">Enter OTP</label>
-                            <div className="mt-2">
-                                <input name="otp" type="text" placeholder="6-digit OTP" required value={otp} onChange={(e) => setOtp(e.target.value)} className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm" />
-                            </div>
-                        </div>
-
+                    <form className="space-y-6" onSubmit={handleRegister}>
                         <div>
                             <label className="block text-sm font-medium leading-6 text-gray-900">Full Name</label>
                             <div className="mt-2">
                                 <input name="name" type="text" required onChange={handleChange} className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium leading-6 text-gray-900">Email address</label>
+                            <div className="mt-2">
+                                <input name="email" type="email" required onChange={handleChange} className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm" />
                             </div>
                         </div>
 
@@ -107,9 +120,25 @@ export default function Register() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium leading-6 text-gray-900">Address</label>
-                            <div className="mt-2">
-                                <input name="address" type="text" onChange={handleChange} className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm" />
+                            <label className="block text-sm font-medium leading-6 text-gray-900">Address / Location</label>
+                            <div className="mt-2 flex gap-2">
+                                <input
+                                    name="address"
+                                    type="text"
+                                    value={formData.address}
+                                    onChange={handleChange}
+                                    className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                                    placeholder="Enter address or pickup location"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleGetLocation}
+                                    disabled={gettingLocation}
+                                    className="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                    title="Use Current Location"
+                                >
+                                    {gettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <Locate className="h-4 w-4" />}
+                                </button>
                             </div>
                         </div>
 
@@ -121,8 +150,37 @@ export default function Register() {
                         </div>
 
                         <div>
-                            <button type="submit" className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
-                                Verify & Register
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:bg-blue-400"
+                            >
+                                {loading ? 'Saving & Sending OTP...' : 'Register'}
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <form className="space-y-6" onSubmit={handleVerifyRegisterOtp}>
+                        <div className="text-center">
+                            <p className="text-sm text-gray-600">
+                                OTP sent to <strong>{formData.email}</strong>
+                            </p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium leading-6 text-gray-900">Enter Verification OTP</label>
+                            <div className="mt-2">
+                                <input name="otp" type="text" placeholder="6-digit OTP" required value={otp} onChange={(e) => setOtp(e.target.value)} className="block w-full rounded-md border border-gray-300 bg-white py-2 px-3 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:bg-blue-400"
+                            >
+                                {loading ? 'Verifying...' : 'Verify & Complete Registration'}
                             </button>
                         </div>
                     </form>

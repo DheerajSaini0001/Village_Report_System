@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Feed from './pages/Feed';
 import Dashboard from './pages/Dashboard';
 import Report from './pages/Report';
 import AdminDashboard from './pages/AdminDashboard';
@@ -17,9 +18,11 @@ function App() {
         <div className="min-h-screen bg-gray-50">
           <Navbar />
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Feed />} />
+            <Route path="/landing" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/feed" element={<Feed />} />
             <Route
               path="/dashboard"
               element={

@@ -14,19 +14,19 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="bg-white shadow">
+        <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     <div className="flex">
                         <div className="flex-shrink-0 flex items-center">
-                            <Link to="/" className="text-xl font-bold text-gray-800">
-                                VillageReport
+                            <Link to="/" className="text-2xl font-extrabold text-blue-600 tracking-tight">
+                                Village<span className="text-gray-900">Report</span>
                             </Link>
                         </div>
                     </div>
                     <div className="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-8">
                         <Link to="/" className="px-3 py-2 text-gray-700 hover:text-gray-900">
-                            Home
+                            Feed
                         </Link>
                         {user ? (
                             <>
@@ -70,7 +70,7 @@ export default function Navbar() {
                 <div className="sm:hidden">
                     <div className="pt-2 pb-3 space-y-1">
                         <Link to="/" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">
-                            Home
+                            Feed
                         </Link>
                         {user ? (
                             <>
