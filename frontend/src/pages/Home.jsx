@@ -10,7 +10,7 @@ export default function Home() {
 
     return (
         <div
-            className={`pt-20 transition-colors duration-300
+            className={` transition-colors duration-300
             ${isDark ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}
         >
             {/* HERO SECTION */}
