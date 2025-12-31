@@ -1,31 +1,40 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
-import Home from './pages/Home';
 import Footer from './components/Footer';
+
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Feed from './pages/Feed';
 import Dashboard from './pages/Dashboard';
 import Report from './pages/Report';
 import AdminDashboard from './pages/AdminDashboard';
+import HowItWorks from './pages/HowItWorks';
+
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
-import HowItWorks from './pages/HowItWorks';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <div className="min-h-screen flex flex-col transition-colors duration-300">
+          
+          {/* NAVBAR */}
           <Navbar />
-          <main className="flex-grow">
+
+          {/* ✅ GLOBAL OFFSET FOR STICKY NAVBAR */}
+          <main className="flex-grow pt-16">
             <Routes>
+              {/* PUBLIC ROUTES */}
               <Route path="/" element={<Home />} />
               <Route path="/landing" element={<Home />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/howitworks" element={<HowItWorks />} />
+
+              {/* PROTECTED ROUTES */}
               <Route
                 path="/feed"
                 element={
@@ -34,6 +43,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/dashboard"
                 element={
@@ -42,6 +52,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/report"
                 element={
@@ -50,6 +61,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
               <Route
                 path="/admin"
                 element={
@@ -60,7 +72,11 @@ function App() {
               />
             </Routes>
           </main>
+
+          {/* FOOTER */}
           <Footer />
+
+          {/* TOASTS */}
           <Toaster position="top-right" />
         </div>
       </Router>
