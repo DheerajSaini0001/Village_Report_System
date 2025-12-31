@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/userModel');
+const Otp = require('../models/otpModel');
 const sendEmail = require('../utils/emailService');
 
 // @desc    Register new user
@@ -20,97 +21,61 @@ const sendRegisterOtp = async (req, res) => {
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    // We can't store this in the 'User' collection yet because the user doesn't exist.
-    // For a production app, use a temporary 'PendingUser' or 'OTP' collection/Redis.
-    // FOR THIS PROTOTYPE: We will create the user but mark them as 'unverified' or just send the OTP back to client (INSECURE)
-    // BETTER APPROACH FOR PROTOTYPE: Just send the OTP to email, and REQUIRE the client to send it back with the registration details.
-
-    // Since we need to verify the email ownership BEFORE extracting details, 
-    // we will stick to a simpler flow: Client sends details -> Server checks -> Server sends OTP -> Client inputs OTP -> Registration completes.
-
-    // Actually, simpler implementation:
-    // 1. User fills form
-    // 2. Hits "Verify Email"
-    // 3. We send OTP to email (stateless or redis)
-    // 4. User enters OTP + Form Data
-    // 5. We verify.
-
-    // However, without Redis/DB for temporary storage, we can't verify the OTP on step 5 easily.
-    // So we will do this:
-    // 1. User enters email -> Send OTP.
-    // 2. We will Create a "Temporary" user record with otp and otpExpires.
-    //    OR better, we just hash the OTP and send it back to client signed (JWT) as a "verification token"? No that's complex.
-
-    // LET'S GO WITH:
-    // Store OTP in a new collection would be best, but let's simply reuse the User model.
-    // We will create the user record with empty name/pass, just email + otp.
-    // Then 'register' will actually be 'update' profile. 
-    // This creates "ghost" users if they don't finish, but good enough for now.
-
-    let user = await User.findOne({ email });
-    if (user && user.name) {
-        return res.status(400).json({ message: 'User already exists' });
-    }
-
-    if (!user) {
-        user = await User.create({
-            email,
-            name: 'Unverified',
-            password: 'temp', // Temp password
-            mobile: '0000000000' // Temp mobile
-        });
-    }
-
-    user.otp = otp;
-    user.otpExpires = otpExpires;
-    await user.save();
+    // Store OTP in OtpModel (Upsert: Update if exists, Insert if new)
+    await Otp.findOneAndUpdate(
+        { email },
+        { otp },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     try {
         await sendEmail({
-            email: user.email,
+            email,
             subject: 'Email Verification OTP',
-            message: `Your verification OTP is: ${otp}`
+            message: `Your verification OTP is: ${otp}. Valid for 5 minutes.`
         });
-        res.status(200).json({ message: 'OTP sent to email', isTemp: true });
+        res.status(200).json({ message: 'OTP sent to email' });
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: 'Email could not be sent' });
     }
 };
 
-// @desc    Finalize Registration with OTP
+// @desc    Verify OTP & Create User
 // @route   POST /api/users/register-verify
 // @access  Public
 const registerUserWithOtp = async (req, res) => {
     const { name, email, password, mobile, address, otp } = req.body;
 
-    const user = await User.findOne({ email });
+    // Check OTP Record
+    const otpRecord = await Otp.findOne({ email });
 
-    if (!user) {
-        return res.status(400).json({ message: 'Please request OTP first' });
+    if (!otpRecord) {
+        return res.status(400).json({ message: 'OTP expired or invalid' });
     }
 
-    if (user.name !== 'Unverified' && user.mobile !== '0000000000') {
-        // This means they are already a real user
-        return res.status(400).json({ message: 'User already registered' });
-    }
+    if (otpRecord.otp === otp) {
+        // OTP Connected: NOW Create the User
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
 
-    if (user.otp === otp && user.otpExpires > Date.now()) {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        user.name = name;
-        user.password = hashedPassword;
-        user.mobile = mobile;
-        user.address = address;
-        user.role = 'villager';
+        const user = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            mobile,
+            address,
+            role: 'villager'
+        });
 
-        user.otp = undefined;
-        user.otpExpires = undefined;
-
-        await user.save();
+        // Delete OTP record
+        await Otp.deleteOne({ email });
 
         // Send Welcome Email
         try {
@@ -129,7 +94,7 @@ const registerUserWithOtp = async (req, res) => {
             token: generateToken(user._id)
         });
     } else {
-        res.status(400).json({ message: 'Invalid or expired OTP' });
+        res.status(400).json({ message: 'Invalid OTP' });
     }
 };
 

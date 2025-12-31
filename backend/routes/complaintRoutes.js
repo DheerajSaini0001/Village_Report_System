@@ -5,15 +5,21 @@ const {
     createComplaint,
     getMyComplaints,
     getAllComplaints,
-    updateComplaintStatus
+    updateComplaintStatus,
+    getPublicFeed,
+    getUploadSignature
 } = require('../controllers/complaintController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+router.get('/feed', getPublicFeed);
+
+router.get('/upload-signature', protect, getUploadSignature);
+
 router.route('/')
-    .post(protect, upload.single('image'), createComplaint)
+    .post(protect, createComplaint) // Removed upload.single('image')
     .get(protect, admin, getAllComplaints);
 
 router.route('/my').get(protect, getMyComplaints);

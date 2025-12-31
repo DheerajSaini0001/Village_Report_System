@@ -2,50 +2,51 @@ const Complaint = require('../models/complaintModel');
 const cloudinary = require('../config/cloudinary');
 const streamifier = require('streamifier');
 
-// Helper to upload to Cloudinary from buffer
-const uploadFromBuffer = (buffer) => {
-    return new Promise((resolve, reject) => {
-        let stream = cloudinary.uploader.upload_stream(
-            { folder: "village_reports" },
-            (error, result) => {
-                if (result) {
-                    resolve(result);
-                } else {
-                    reject(error);
-                }
-            }
-        );
-        streamifier.createReadStream(buffer).pipe(stream);
-    });
+// Helper to get signature for client-side upload
+const getUploadSignature = async (req, res) => {
+    try {
+        const timestamp = Math.round((new Date).getTime() / 1000);
+        const signature = cloudinary.utils.api_sign_request({
+            timestamp: timestamp,
+            folder: 'village_reports'
+        }, process.env.CLOUDINARY_API_SECRET);
+
+        res.json({
+            signature,
+            timestamp,
+            cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+            apiKey: process.env.CLOUDINARY_API_KEY
+        });
+    } catch (error) {
+        console.error('Signature generation error:', error);
+        res.status(500).json({ message: 'Could not generate upload signature' });
+    }
 };
 
 // @desc    Create new complaint
 // @route   POST /api/complaints
 // @access  Private
 const createComplaint = async (req, res) => {
-    const { category, description, latitude, longitude } = req.body;
+    // backend expects 'address', but frontend might send 'address' or 'locationText'
+    const { category, description, latitude, longitude, address, locationText, image } = req.body; // image is now a URL string
 
-    if (!category || !description || !latitude || !longitude) {
-        return res.status(400).json({ message: 'Please add all fields' });
-    }
+    // Prefer 'address', fallback to 'locationText'
+    const finalAddress = address || locationText;
 
-    // Check if image is uploaded
-    if (!req.file) {
-        return res.status(400).json({ message: 'Please upload an image' });
+    if (!category || !description || !finalAddress || !image) {
+        return res.status(400).json({ message: 'Please add all fields including image URL' });
     }
 
     try {
-        // Upload image to Cloudinary
-        const result = await uploadFromBuffer(req.file.buffer);
-
         const complaint = await Complaint.create({
             user: req.user.id,
             category,
             description,
-            image: result.secure_url,
+            image, // URL from frontend
+            address: finalAddress,
             location: {
-                latitude,
-                longitude
+                latitude: latitude || 0,
+                longitude: longitude || 0
             }
         });
 
@@ -94,8 +95,28 @@ const updateComplaintStatus = async (req, res) => {
         complaint.status = req.body.status || complaint.status;
         complaint.adminComment = req.body.adminComment || complaint.adminComment;
 
+        // Handle approval toggle if provided
+        if (req.body.isApproved !== undefined) {
+            complaint.isApproved = req.body.isApproved;
+        }
+
         const updatedComplaint = await complaint.save();
         res.status(200).json(updatedComplaint);
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Get Feed (Public)
+// @route   GET /api/complaints/feed
+// @access  Public
+const getPublicFeed = async (req, res) => {
+    try {
+        const complaints = await Complaint.find({ isApproved: true }) // Only show approved complaints
+            .select('category description image address status createdAt')
+            .sort({ createdAt: -1 })
+            .limit(20);
+        res.status(200).json(complaints);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -105,5 +126,7 @@ module.exports = {
     createComplaint,
     getMyComplaints,
     getAllComplaints,
-    updateComplaintStatus
+    updateComplaintStatus,
+    getPublicFeed,
+    getUploadSignature
 };

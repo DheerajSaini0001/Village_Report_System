@@ -22,12 +22,18 @@ const complaintSchema = mongoose.Schema({
     location: {
         latitude: {
             type: Number,
-            required: true
+            required: true,
+            default: 0
         },
         longitude: {
             type: Number,
-            required: true
+            required: true,
+            default: 0
         }
+    },
+    address: {
+        type: String,
+        required: true
     },
     status: {
         type: String,
@@ -37,6 +43,10 @@ const complaintSchema = mongoose.Schema({
     adminComment: {
         type: String,
         default: ''
+    },
+    isApproved: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
